@@ -1,6 +1,8 @@
 #pragma once
 #include <time.h>
-
+//////////////////////////////////////////////////
+//////             ESTRUCTURAS            ////////
+//////////////////////////////////////////////////
 /** Representa el estado de un programa */
 enum status
 {
@@ -31,14 +33,23 @@ typedef struct program
 
 } Program;
 
+//////////////////////////////////////////////////
+//////        FUNCIONES PRIVADAS          ////////
+//////////////////////////////////////////////////
 
-/// Funciones
 
-// Crea un programa nuevo
+/** Crea un programa nuevo*/ 
 Program* init_program(int n_arg, char* name);
 
-Program** read_file(const char* name_file);
+/** Quita el salto de linea a un string*/
+void strip(char* string);
 
+//////////////////////////////////////////////////
+///////        FUNCIONES PUBLICAS         ////////
+//////////////////////////////////////////////////
+
+/** Lee el archivo y entrega la lista de programas*/
+Program** read_file(const char* name_file);
+/** Destruimos el programa*/
 void destroy_program(Program* program);
 
-void strip(char* string);

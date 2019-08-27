@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
-
+//Entrega un puntero a un programa 
 Program* init_program(int n_arg, char* name){
 	// Pido memoria para el programa
 	Program* program = malloc(sizeof(Program));
@@ -20,6 +20,7 @@ Program* init_program(int n_arg, char* name){
 	return program;
 }
 
+//Lee el archivo y retorna un array con punteros a los programas
 Program** read_file(const char* name_file){
 
 	//LinkedList* list = ll_init();
@@ -57,15 +58,12 @@ Program** read_file(const char* name_file){
 	//Liberamos la linea
 	free(line);
 	//Cerramos el archivo
-	fclose(file);
-	for(int p=0; p<N;p++){
-		printf("%s\n", p.name);
-	}
-	
+	fclose(file);	
 	//Retornamos la lista con los programas
 	return list;
 }
 
+//Destruye el programa
 void destroy_program(Program* program){
 	for(int i=0; i<program->n_arg;i++){
 		free(program->arg[i]);
@@ -76,7 +74,9 @@ void destroy_program(Program* program){
 	free(program);
 	program = NULL;
 }
-//Funcion auxiliar obtenida del link: 
+
+//Funcion auxiliar. Quita el salto de linea a un string
+//Obtenida del link: 
 //https://cboard.cprogramming.com/c-programming/70320-how-remove-newline-string.html
 void strip(char* string){
   string[strcspn (string,"\n")] = '\0';
