@@ -1,3 +1,12 @@
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                          IMPORTANTE - REFERENCIA                                                                   //
+// Manejo de memoria compartida obtenida de                                                                                           //
+// http://www.cs.kent.edu/~ruttan/sysprog/lectures/shmem/shmem.html                                                                   //
+// y de https://stackoverflow.com/questions/26161486/creating-multiple-children-of-a-process-and-maintaining-a-shared-array-of-all-th //
+//                                                                                                                                    // 
+// Multiples procesos visto en https://gist.github.com/dgacitua/64ff00e90d5e21f9c3f7                                                  //
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #include "../process/process.h"
 #include <errno.h>
 #include <stdint.h>
@@ -10,14 +19,14 @@
 #include <sys/mman.h>
 #include <sys/shm.h>
 
-
-
+/** Variables globales*/
 int max_pids; //maxima cantidad de procesos concurrentes
 Program* programs_list; // Array de programas
 int N; // Cantidad total de programas (i.e len de programs_list)
 int* count; // Cantidad de programas ejecutados
 pid_t parent_pid; //pid del programa principal
 
+/** Handler*/
 
 // Funcion que maneja la señal de interrupcion
 void end_all_process(int sig){
@@ -36,12 +45,19 @@ void end_all_process(int sig){
 void end_process(int sig){
   //Desactivo la alarma
   signal (SIGALRM, SIG_IGN);
-
   //Desactivo interrupcion
   signal (SIGKILL, SIG_IGN);
 
-  //Mato al proceso
   pid_t end_pid = getpid();
+
+  for(int i=0; i<N;i++){
+    if(programs_list[i].status == INPROGRESS && programs_list[i].process_pid == end_pid){
+      programs_list[i].status = INCOMPLETE;
+      programs_list[i].end_time = time(0);
+      break;
+      }
+  }
+  //Mato al proceso  
   kill(end_pid, SIGKILL);
 
   //Reactivo interrupcion
@@ -49,7 +65,7 @@ void end_process(int sig){
 }
 
 void set_end_time_program(int sig){
-  time_t end = time(NULL);
+  time_t end = time(0);
   pid_t pid;
   int status;
 
@@ -57,7 +73,7 @@ void set_end_time_program(int sig){
     if(pid != 0 && pid!=parent_pid){
       for(int i=0; i<N;i++){
         if(programs_list[i].status == INPROGRESS && programs_list[i].process_pid == pid){
-          programs_list[i].status = COMPLETE;
+          programs_list[i].status = 1;
           programs_list[i].end_time = end;
           break;
         }
@@ -78,9 +94,16 @@ int main(int argc, char *argv[]){
   max_pids = atoi(argv[3]);
 
   //Cantidad total de programas a ejecutar
-  N = 4; ////*** CAMBIAR  **///
+  char* line = NULL; 
+  size_t size = 0;
+  FILE* file = fopen(argv[1], "r");
+  getline(&line, &size, file);
+  int N = atoi(line);
+  fclose(file);
+  free(line);
 
   //Establecemos un segmento de memoria compartida para guardar los valores de las ejecuciones
+  // Codigo obtenido de link: http://www.cs.kent.edu/~ruttan/sysprog/lectures/shmem/shmem.html
 
   int shm_id;     // id segmento de memoria compartida
   char* shm_addr;         // direccion segmento memoria compartida
@@ -92,7 +115,7 @@ int main(int argc, char *argv[]){
   shm_addr = shmat(shm_id, NULL, 0);
   //Creamos un indice para los programas en la memoria compartida
   program_num= (int*) shm_addr;
-  int* program_num = 0;
+  *program_num = 0;
   programs_list = (Program*) ((void*)shm_addr+sizeof(int));
 
   //Leo el archivo y obtengo la lista de programas
@@ -165,8 +188,7 @@ int main(int argc, char *argv[]){
             }
 
             // Seteamos el tiempo de inicio
-            programs_list[i].start_time = time(NULL);
-
+            time(&programs_list[i].start_time);
             // Ejecutamos el programa
             execvp(programs_list[i].name,args);
           }
@@ -198,7 +220,8 @@ int main(int argc, char *argv[]){
       else{
         result = 0;
       }
-      fprintf(output, "%s,%f,%d\n", program.name, difftime(program.end_time, program.start_time), result);
+      double diff =  difftime(program.start_time, program.end_time);
+      fprintf(output, "%s,%f,%d\n", program.name,diff, result);
     }
 
     // Cerramos el archivo de salida
@@ -219,8 +242,11 @@ int main(int argc, char *argv[]){
   return 0;
 }
 
-//////////////////////////////////////////////////////////////////////
-// IMPORTANTE - REFERENCIA                                          //
-// Manejo de memoria compartida obtenida de                         //
-// http://www.cs.kent.edu/~ruttan/sysprog/lectures/shmem/shmem.html //
-//////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                          IMPORTANTE - REFERENCIA                                                                   //
+// Manejo de memoria compartida obtenida de                                                                                           //
+// http://www.cs.kent.edu/~ruttan/sysprog/lectures/shmem/shmem.html                                                                   //
+// y de https://stackoverflow.com/questions/26161486/creating-multiple-children-of-a-process-and-maintaining-a-shared-array-of-all-th //
+//                                                                                                                                    // 
+// Multiples procesos visto en https://gist.github.com/dgacitua/64ff00e90d5e21f9c3f7                                                  //
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

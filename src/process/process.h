@@ -52,4 +52,3 @@ void strip(char* string);
 Program** read_file(const char* name_file);
 /** Destruimos el programa*/
 void destroy_program(Program* program);
-

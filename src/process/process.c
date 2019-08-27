@@ -1,3 +1,9 @@
+////////////////////////////////////////////////////////////////////////////////////////
+// IMPORTANTE - REFERENCIA                                                            //
+// Quita el salto de linea a un string obtenida de                                    //
+// https://cboard.cprogramming.com/c-programming/70320-how-remove-newline-string.html //
+////////////////////////////////////////////////////////////////////////////////////////
+
 #include "process.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -81,3 +87,12 @@ void destroy_program(Program* program){
 void strip(char* string){
   string[strcspn (string,"\n")] = '\0';
 }
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////////////
+// IMPORTANTE - REFERENCIA                                                            //
+// Quita el salto de linea a un string obtenida de                                    //
+// https://cboard.cprogramming.com/c-programming/70320-how-remove-newline-string.html //
+////////////////////////////////////////////////////////////////////////////////////////
