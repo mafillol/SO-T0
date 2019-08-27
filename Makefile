@@ -43,7 +43,7 @@ LIB=$(MTH)
 ###############################################################################
 
 # Directorios con elementos de uso común
-COMMON=linked_list process
+COMMON=process
 
 # Directorios que serán compilados a un programa
 PROGRAMS=crexe

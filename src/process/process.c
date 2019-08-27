@@ -1,4 +1,4 @@
-#include "../linked_list/linked_list.h"
+#include "process.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -58,6 +58,9 @@ Program** read_file(const char* name_file){
 	free(line);
 	//Cerramos el archivo
 	fclose(file);
+	for(int p=0; p<N;p++){
+		printf("%s\n", p.name);
+	}
 	
 	//Retornamos la lista con los programas
 	return list;
@@ -77,25 +80,4 @@ void destroy_program(Program* program){
 //https://cboard.cprogramming.com/c-programming/70320-how-remove-newline-string.html
 void strip(char* string){
   string[strcspn (string,"\n")] = '\0';
-}
-
-volatile pid_t* add_pid(pid_t pid,volatile pid_t * list, int max){
-	for(int i=0;i<max;i++){
-		if(list[i]==pid){
-			break;
-		}
-		else if(list[i] == 0){
-			list[i] = pid;
-		}
-	}
-	return list;
-}
-
-volatile pid_t* remove_pid(pid_t pid,volatile pid_t * list, int max){
-	for(int i=0;i<max;i++){
-		if(list[i] == pid){
-			list[i] = 0;
-		}
-	}
-	return list;
 }

@@ -1,4 +1,4 @@
-#include "../linked_list/linked_list.h"
+#include "../process/process.h"
 #include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -12,47 +12,27 @@
 
 
 
-volatile pid_t* pids; //Array para los pid de los hijos
 int max_pids; //maxima cantidad de procesos concurrentes
 Program** programs_list; // Array de programas
 int N; // Cantidad total de programas (i.e len de programs_list)
 int* count; // Cantidad de programas ejecutados
 pid_t parent_pid;
 
-static int default_handler()
-{
-    struct sigaction  action;
-
-    memset(&action, 0, sizeof action);
-    sigemptyset(&action.sa_mask);
-
-    action.sa_handler = SIG_DFL;
-    action.sa_flags = 0;
-
-    if (sigaction(SIGINT, &action, NULL) == -1)
-        return errno;
-
-    return 0;
-}
-
 // Funcion que maneja la señal de interrupcion
 void end_all_process(int sig){
-  printf("Vamos a terminar los procesos\n" );
-  //Desactivo el seteo del tiempo
-  signal (SIGCHLD, SIG_IGN);
-  //Desactivo la alarma
-  signal (SIGALRM, SIG_IGN);
-  //Desactivo la interrupcion
-  default_handler();
+  pid_t pid = getpid();
+  if(pid != parent_pid){
+    printf("Murio\n");
+    //Desactivo el seteo del tiempo
+    signal (SIGCHLD, SIG_IGN);
+    //Desactivo la alarma
+    signal (SIGALRM, SIG_IGN);
 
-  for(int i=0;i<max_pids;i++){
-    printf("proceso a morir %d\n", pids[i]);
-    // Envio señal de termino de proceso
-    kill(pids[i], SIGKILL);
-    printf("Proceso terminado\n");
+    kill(pid, SIGKILL);
   }
 }
 
+//Funcion que maneja la alarma
 void end_process(int sig){
   //Desactivo la alarma
   signal (SIGALRM, SIG_IGN);
@@ -65,7 +45,7 @@ void end_process(int sig){
   kill(end_pid, SIGKILL);
 
   //Reactivo interrupcion
-  signal (SIGKILL, &end_all_process);
+  signal (SIGINT, &end_all_process);
 }
 
 void set_end_time_program(int sig){
@@ -75,7 +55,6 @@ void set_end_time_program(int sig){
 
   while ((pid = waitpid(-1, &status, WNOHANG)) != -1){
     if(pid != 0 && pid!=parent_pid){
-      remove_pid(pid,pids, max_pids);
       for(int i=0; i<N;i++){
         if(programs_list[i]->status == INPROGRESS && programs_list[i]->process_pid == pid){
           printf("entramos aqui\n");
@@ -92,7 +71,7 @@ void set_end_time_program(int sig){
 /** Esta función es lo que se llama al ejecutar tu programa */
 int main(int argc, char *argv[]){ 
 
-  parent_pid = getpid();  
+  parent_pid = getpid();
 
   //Cantidad maxima de pids concurrentes
   max_pids = atoi(argv[3]);
@@ -100,20 +79,14 @@ int main(int argc, char *argv[]){
   //
   N = 4; ////*** CAMBIAR  **///
 
-  // Map space para el array de los pids
+  // Map space
   // Obtenido de link: https://stackoverflow.com/questions/26161486/creating-multiple-children-of-a-process-and-maintaining-a-shared-array-of-all-th
-  pids = mmap(0, max_pids*sizeof(pid_t), PROT_READ|PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-  memset((void *)pids, 0, max_pids*sizeof(pid_t));
-
-  programs_list = mmap(0, N*sizeof(Program*), PROT_READ|PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-  memset((void *)programs_list, 0, N*sizeof(Program*));
+  programs_list = mmap(0, N*sizeof(Program**), PROT_READ|PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+  memset((void **)programs_list, 0, N*sizeof(Program**));
 
   count = mmap(0, sizeof(int), PROT_READ|PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
   memset((void *)count, 0, sizeof(int));
 
-  int* index;
-  index = mmap(0, sizeof(int), PROT_READ|PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-  memset((void *)index, 0, sizeof(int));
 
   //Leo el archivo y obtengo la lista de programas
   programs_list = read_file(argv[1]);
@@ -145,10 +118,10 @@ int main(int argc, char *argv[]){
         for(int i=0; i<N;i++){
           // Si el programa no esta siendo ejecutado
           if(programs_list[i]->status == INCOMPLETE){
+            printf("Me voy a ejecutar\n");
             programs_list[i]->status = INPROGRESS;
             count[0]++;
             programs_list[i]->process_pid = getpid();
-            pids = add_pid(getpid(), pids, max_pids);
 
             //Preparamos el array de argumentos terminados en NULL
             char** args =(char**)calloc(programs_list[i]->n_arg + 1, sizeof(char*));
@@ -170,12 +143,11 @@ int main(int argc, char *argv[]){
             programs_list[i]->start_time = time(NULL);
 
             // Ejecutamos el programa
-            sleep(10);
             execvp(programs_list[i]->name,args);
           }
         }
         // Si no hay ningun programa por correr, terminamos
-        exit(1);
+        exit(0);
       }
     }
 
@@ -185,35 +157,32 @@ int main(int argc, char *argv[]){
     }
   }
 
-  printf("Vamos aqui\n");
-  // El programa principal escribe el archivo de salida
-  FILE* output = fopen(argv[2], "w");
+  // El programa original escribe el archivo de salida
+  if(getpid() == parent_pid){
+    // El programa principal escribe el archivo de salida
+    FILE* output = fopen(argv[2], "w");
 
-  for(int i=0; i<N; i++){
-    Program* program = programs_list[i];
-    int result;
-    if(program->status == COMPLETE){
-      result = 1;
+    for(int i=0; i<N; i++){
+      Program* program = programs_list[i];
+      int result;
+      if(program->status == COMPLETE){
+        result = 1;
+      }
+      else{
+        result = 0;
+      }
+      fprintf(output, "%s,%f,%d\n", program->name, difftime(program->end_time, program->start_time), result);
     }
-    else{
-      result = 0;
+
+    // Cerramos el archivo de salida
+    fclose(output);
+
+    //Liberamos la lista de programas
+    for(int i=0; i<N; i++){
+      destroy_program(programs_list[i]);
     }
-    fprintf(output, "%s,%f,%d\n", program->name, difftime(program->end_time, program->start_time), result);
+    free(programs_list);
   }
-
-  // Cerramos el archivo de salida
-  fclose(output);
-
-  //Liberamos la lista de programas
-  for(int i=0; i<N; i++){
-    destroy_program(programs_list[i]);
-  }
-  free(programs_list);
-
-
-  //   // Capturamos la señal de interrupcion
-  //   signal(SIGINT, &end_process);
-
 
   return 0;
 }
